@@ -4,6 +4,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY server.py stickers.json ./
 COPY stickers ./stickers
+COPY ui ./ui
 ENV TRANSPORT=http PORT=8000
 EXPOSE 8000
 CMD ["python", "server.py"]

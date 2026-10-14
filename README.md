@@ -9,7 +9,15 @@
 ## MCP 工具
 
 - `list_stickers(query="")`：按名称、描述、情绪标签查找表情包。
-- `show_sticker(filename)`：返回 CDN 地址、Markdown 和 MCP 图片内容。
+- `show_sticker(filename)`：返回结构化图片数据、MCP 图片内容，并关联官方 MCP Apps UI 组件。
+
+## 聊天内的 UI
+
+`ui/sticker.html` 只展示一张图片，最大 240 × 240 像素，透明背景，无按钮或重复说明。组件通过 MCP Apps 消息桥读取工具结果，同时兼容 ChatGPT 的 `window.openai.toolOutput`。只给展示工具关联组件，检索工具不触发展示。图片加载失败时会显示简短提示。
+
+UI 使用 `text/html;profile=mcp-app`，工具声明 `_meta.ui.resourceUri` 并提供 `openai/outputTemplate` 兼容字段。CSP 仅允许 jsDelivr 的图片资源。
+
+官方插件 UI 是对话内组件，并非原生表情包气泡；客户端控制外围标签和位置。当前版本已完成协议测试，实际 ChatGPT App 的显示仍需部署、接入后验证。
 
 URL、Markdown 和 MCP 图片内容能否显示，取决于客户端；接入后请实际验证。
 

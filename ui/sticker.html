@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>表情包</title>
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  main { padding: 4px 0; min-height: 28px; }
+  img { display: block; width: auto; height: auto; max-width: min(240px, 100%); max-height: 240px; border-radius: 8px; }
+  [hidden] { display: none !important; }
+  p { margin: 0; font-size: 13px; color: CanvasText; }
+</style>
+<main aria-label="聊天表情包">
+  <p id="status" role="status">正在准备表情包…</p>
+  <img id="sticker" hidden alt="">
+</main>
+<script>
+(() => {
+  const img = document.getElementById('sticker');
+  const status = document.getElementById('status');
+  let requestId = 0;
+  const pending = new Map();
+  function notify(method, params = {}) {
+    if (window.parent !== window) window.parent.postMessage({jsonrpc:'2.0', method, params}, '*');
+  }
+  function resize() {
+    notify('ui/notifications/size-changed', {height: document.querySelector('main').offsetHeight});
+  }
+  function render(data) {
+    const sticker = data?.sticker;
+    if (!sticker?.url) return;
+    let url;
+    try { url = new URL(sticker.url); } catch { return; }
+    if (url.origin !== 'https://cdn.jsdelivr.net' || !url.pathname.startsWith('/gh/')) {
+      status.textContent = '图片地址不可用'; status.hidden = false; img.hidden = true; resize(); return;
+    }
+    status.textContent = '正在加载表情包…'; status.hidden = false; img.hidden = true;
+    img.alt = sticker.description || sticker.filename || '表情包';
+    img.src = url.href;
+  }
+  img.onload = () => { img.hidden = false; status.hidden = true; resize(); };
+  img.onerror = () => { img.hidden = true; status.hidden = false; status.textContent = '表情包暂时加载失败'; resize(); };
+  window.addEventListener('message', event => {
+    if (event.source !== window.parent || window.parent === window) return;
+    const message = event.data;
+    if (!message || message.jsonrpc !== '2.0') return;
+    if (pending.has(message.id)) {
+      const done = pending.get(message.id); pending.delete(message.id);
+      done(!message.error); return;
+    }
+    if (message.method === 'ui/notifications/tool-result') render(message.params?.structuredContent);
+  });
+  // Compatibility with hosts exposing ChatGPT's existing component bridge.
+  render(window.openai?.toolOutput);
+  window.addEventListener('openai:set_globals', event => {
+    render(event.detail?.globals?.toolOutput || window.openai?.toolOutput);
+  });
+  if (window.parent !== window) {
+    const id = ++requestId;
+    pending.set(id, ok => { if (ok) notify('ui/notifications/initialized'); });
+    window.parent.postMessage({jsonrpc:'2.0', id, method:'ui/initialize', params:{
+      appInfo:{name:'chat-stickers',version:'1.0.0'}, appCapabilities:{}, protocolVersion:'2026-01-26'
+    }}, '*');
+  }
+})();
+</script>
+</html>
